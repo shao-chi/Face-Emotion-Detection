@@ -254,7 +254,7 @@ with tf.name_scope('correct_prediction'):
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) 
     tf.summary.scalar('accuracy', accuracy)
 
-batch_size = 100
+batch_size = 16
 epochs_completed = 0
 index_in_epoch = 0
 num_examples = x_train.shape[0]
@@ -291,8 +291,8 @@ with tf.device('/CPU:0'):
     sess.run(tf.global_variables_initializer())
 
     merged = tf.summary.merge_all()
-    train_writer = tf.summary.FileWriter("logs_bn_4/train", sess.graph)
-    test_writer = tf.summary.FileWriter("logs_bn_4/test")  
+    train_writer = tf.summary.FileWriter("logs_1/train", sess.graph)
+    test_writer = tf.summary.FileWriter("logs_1/test")  
     saver = tf.train.Saver(max_to_keep=2)
     saver_max_acc = 0 
 
@@ -300,22 +300,20 @@ with tf.device('/CPU:0'):
         # learning rate decay
         max_learning_rate = 0.05
         min_learning_rate = 0.0001
-        decay_speed = 160000
+        decay_speed = 160
         learning_rate = min_learning_rate + (max_learning_rate - min_learning_rate) * math.exp(-i/decay_speed)
         batch_xs, batch_ys = next_batch(batch_size)
-        feed_dict = {xs: batch_xs, ys: batch_ys, keep_prob: 0.7, lr: learning_rate, tst: False}  # new5 0.7
+        feed_dict = {xs: batch_xs, ys: batch_ys, keep_prob: 0.3, lr: learning_rate, tst: False}
+        ab, _, c , summary= sess.run([accuracy, train_step, cross_entropy, merged], feed_dict = feed_dict)
         sess.run(update_ema, {xs: batch_xs, ys: batch_ys, tst: False, iter: i, keep_prob: 1.0})
 
         if i % 10 == 0:
-            ab, _, c , summary= sess.run([accuracy, train_step, cross_entropy, merged], feed_dict = feed_dict)
-            train_writer.add_summary(summary, i)
             a, l , result= sess.run([accuracy, cross_entropy, merged], feed_dict = {xs: x_valid, ys: y_valid, tst: False, iter: i, keep_prob: 1})
             test_writer.add_summary(result, i)
-            print('..........test_acc ', a, '  cross entropy:', l,  '------batch_acc:', ab, '  b_cross:', c)
+            print('----------- batch accuracy: %.4f%%  loss: %.4f' % (ab*100, c)) 
+            print('%d times valid accuracy: %.4f%%  loss: %.4f' % (i/10, a*100, l))
 
             if a > saver_max_acc:
-                print('%d times valid accuracy: %.4f%%  loss: %.4f' % (i/10, a*100, l))
-                print('----------- batch accuracy: %.4f%%  loss: %.4f' % (ab*100, c))
                 saver.save(sess, '../model/model_bn_4/model_bn_4.ckpt', global_step = global_step)
                 print('saved\n')
                 saver_max_acc = a
@@ -324,14 +322,16 @@ with tf.device('/CPU:0'):
             run_metadata = tf.RunMetadata()
             summary, _ = sess.run([merged, train_step], feed_dict = feed_dict, options=run_options, run_metadata=run_metadata)
             train_writer.add_run_metadata(run_metadata, 'step%03d' % i)
-            train_writer.add_summary(summary, i)
             print('Adding run metadata for', i)
         else:  # Record a summary
             summary, _ = sess.run([merged, train_step], feed_dict= feed_dict)
-            train_writer.add_summary(summary, i)
+        train_writer.add_summary(summary, i)
 
-print('\n test: %.1f%% \n' % sess.run(accuracy, feed_dict = {xs: x_test, ys: y_test, tst: False, iter: i, keep_prob: 1}))
+    try:
+        print('\n test: %.1f%% \n' % sess.run(accuracy, feed_dict = {xs: x_test, ys: y_test, tst: False, iter: i, keep_prob: 1}))
+        sess.close()
+    except:
+        sess.close()
 train_writer.close()  
 test_writer.close() 
-sess.close()
 print(time.clock())
