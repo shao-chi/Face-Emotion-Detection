@@ -314,7 +314,7 @@ with tf.device('/CPU:0'):
             print('%d times valid accuracy: %.4f%%  loss: %.4f' % (i/10, a*100, l))
 
             if a > saver_max_acc:
-                saver.save(sess, '../model/model_bn_4/model_bn_4.ckpt', global_step = global_step)
+                saver.save(sess, '../model/model_1/model_1.ckpt', global_step = global_step)
                 print('saved\n')
                 saver_max_acc = a
         elif i % 100 == 99:
